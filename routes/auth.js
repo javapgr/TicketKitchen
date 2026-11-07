@@ -4,9 +4,10 @@ var jwt = require('jsonwebtoken');
 var db = require('../bd');
 
 var router = express.Router();
-var jwtSecret = process.env.JWT_SECRET || 'ticketkitchen-development-secret';
-var maxFailedAttempts = 2;
-var lockDurationMs = 15 * 60 * 1000;
+var authConfig = require('../config/auth');
+var jwtSecret = authConfig.jwtSecret;
+var maxFailedAttempts = authConfig.maxFailedAttempts;
+var lockDurationMs = authConfig.lockDurationMs;
 
 router.get('/login', function(req, res) {
   res.render('login', { title: 'Iniciar sesión', error: null });
@@ -89,8 +90,8 @@ router.post('/login', function(req, res) {
             return res.status(500).json({ error: 'Error de base de datos' });
           }
           var message = lockedUntil
-            ? 'Cuenta bloqueada durante 15 minutos por demasiados intentos'
-            : 'Credenciales inválidas. Te queda 1 intento';
+            ? 'Cuenta bloqueada durante ' + Math.round(lockDurationMs / 60000) + ' minutos por demasiados intentos'
+            : 'Credenciales inválidas. Te quedan ' + (maxFailedAttempts - failedAttempts) + ' intentos';
           loginError(req, res, message);
         }
       );
@@ -103,7 +104,7 @@ router.post('/login', function(req, res) {
         return res.status(500).json({ error: 'Error de base de datos' });
       }
 
-    var token = jwt.sign({ id: user.id, email: user.email, role: user.role }, jwtSecret, { expiresIn: '8h' });
+      var token = jwt.sign({ id: user.id, email: user.email, role: user.role }, jwtSecret, { expiresIn: '8h' });
     res.cookie('auth_token', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 8 * 60 * 60 * 1000 });
 
     if (req.is('json')) {

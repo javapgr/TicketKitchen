@@ -1,6 +1,6 @@
 var jwt = require('jsonwebtoken');
 
-var jwtSecret = process.env.JWT_SECRET || 'ticketkitchen-development-secret';
+var jwtSecret = require('../config/auth').jwtSecret;
 
 module.exports = function requireAuth(req, res, next) {
   var token = req.cookies && req.cookies.auth_token;
