@@ -3,7 +3,7 @@ extends layout
 block content
   h2 Crear usuario
   if error
-    p.error= error
+    p= error
   form(action='/auth/register' method='post')
     p
       label(for='email') Correo

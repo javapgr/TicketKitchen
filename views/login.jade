@@ -3,7 +3,7 @@ extends layout
 block content
   h2 Iniciar sesión
   if error
-    p.error= error
+    p= error
   form(action='/auth/login' method='post')
     p
       label(for='email') Correo

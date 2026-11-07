@@ -63,7 +63,7 @@ block content
             td
               a(href='/restaurant/' + entityName + '/edit/' + row.id) Editar
               |  |
-              form.inline-form(action='/restaurant/' + entityName + '/delete/' + row.id method='post')
+              form(action='/restaurant/' + entityName + '/delete/' + row.id method='post')
                 button(type='submit') Eliminar
   else
     p No hay registros.

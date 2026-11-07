@@ -3,7 +3,6 @@ html
   head
     meta(name='viewport' content='width=device-width, initial-scale=1')
     title= title
-    link(rel='stylesheet', href='/stylesheets/style.css')
   body
     header
       h1 Sistema de restaurante
@@ -21,7 +20,7 @@ html
           |  |
           a(href='/restaurant/tickets') Tickets
           |  |
-          form.inline-form(action='/auth/logout' method='post')
+          form(action='/auth/logout' method='post')
             button(type='submit') Cerrar sesión
     hr
     main
