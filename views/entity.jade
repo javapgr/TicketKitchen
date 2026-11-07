@@ -56,8 +56,8 @@ block content
               td
                 if field === 'disponible'
                   | #{row[field] === 1 ? 'Sí' : 'No'}
-                else if relationOptions[field]
-                  each option in relationOptions[field]
+                else if relationNames[field]
+                  each option in relationNames[field]
                     if option.id === row[field]
                       | #{option.nombre}
                 else

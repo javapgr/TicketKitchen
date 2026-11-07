@@ -19,7 +19,7 @@ function requireAuth(req, res, next) {
 }
 
 function forbidden(req, res) {
-  if (req.path.indexOf('/api/') !== -1 || req.is('json')) {
+  if (req.originalUrl.indexOf('/api/') !== -1 || req.is('json')) {
     return res.status(403).json({ error: 'No tienes permiso para esta acción' });
   }
   res.status(403).send('No tienes permiso para esta acción');
@@ -31,7 +31,7 @@ function requireAdmin(req, res, next) {
 }
 
 function redirectOrReject(req, res) {
-  if (req.path.indexOf('/api/') === 0 || req.is('json')) {
+  if (req.originalUrl.indexOf('/restaurant/api/') === 0 || req.is('json')) {
     return res.status(401).json({ error: 'Autenticación requerida' });
   }
   res.redirect('/auth/login');
