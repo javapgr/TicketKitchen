@@ -1,7 +1,31 @@
 var express = require('express');
 var db = require('../bd');
 var selectOptions = require('../config/constants');
+var forbidden = require('../middleware/auth').forbidden;
 var router = express.Router();
+
+// Permisos: admin puede todo; user solo ve todo y crea/edita tickets (sin borrar).
+function entityOfPath(path) {
+  var parts = path.split('/').filter(Boolean);
+  return parts[0] === 'api' ? parts[1] : parts[0];
+}
+
+function isDeleteRequest(req) {
+  return req.method === 'DELETE' || /\/delete\//.test(req.path) || /\/items\/\d+\/delete/.test(req.path);
+}
+
+function canWrite(user, entityName) {
+  return user.role === 'admin' || entityName === 'tickets';
+}
+
+router.use(function(req, res, next) {
+  if (req.method === 'GET') return next();
+  if (req.user.role === 'admin') return next();
+  var isTicketItem = /\/items(\/|$)/.test(req.path);
+  var isTicketDelete = isDeleteRequest(req) && !isTicketItem;
+  if (canWrite(req.user, entityOfPath(req.path)) && !isTicketDelete) return next();
+  forbidden(req, res);
+});
 
 var entities = {
   clientes: {
@@ -73,7 +97,7 @@ function sendError(res, error) {
   res.status(400).json({ error: error.message });
 }
 
-function renderEntity(res, entityName, entity, editRow) {
+function renderEntity(req, res, entityName, entity, editRow) {
   db.all('SELECT id, nombre FROM clientes ORDER BY nombre', function(clientError, clientes) {
     if (clientError) return sendError(res, clientError);
     db.all("SELECT id, nombre FROM mozos WHERE estado IN ('activo', 'operativo') ORDER BY nombre", function(mozoError, mozos) {
@@ -90,6 +114,8 @@ function renderEntity(res, entityName, entity, editRow) {
             selects: entity.selects || {},
             rows: rows,
             editRow: editRow,
+            canWrite: canWrite(req.user, entityName),
+            canDelete: req.user.role === 'admin',
             relationOptions: { cliente_id: clientes, mozo_id: mozos, cocinero_id: cocineros }
           });
         });
@@ -103,7 +129,7 @@ router.get('/:entity', function(req, res, next) {
   if (req.params.entity === 'api') return next();
   var entity = getEntity(req.params.entity, res);
   if (!entity) return;
-  renderEntity(res, req.params.entity, entity, null);
+  renderEntity(req, res, req.params.entity, entity, null);
 });
 
 // API: listar
@@ -134,7 +160,7 @@ router.get('/:entity/edit/:id', function(req, res) {
   db.get('SELECT * FROM ' + entity.table + ' WHERE id = ?', [req.params.id], function(error, editRow) {
     if (error) return sendError(res, error);
     if (!editRow) return res.status(404).send('Registro no encontrado');
-    renderEntity(res, req.params.entity, entity, editRow);
+    renderEntity(req, res, req.params.entity, entity, editRow);
   });
 });
 

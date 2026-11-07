@@ -2,6 +2,8 @@ var express = require('express');
 var bcrypt = require('bcryptjs');
 var jwt = require('jsonwebtoken');
 var db = require('../bd');
+var requireAuth = require('../middleware/auth');
+var requireAdmin = requireAuth.requireAdmin;
 
 var router = express.Router();
 var authConfig = require('../config/auth');
@@ -13,16 +15,18 @@ router.get('/login', function(req, res) {
   res.render('login', { title: 'Iniciar sesión', error: null });
 });
 
-router.get('/register', function(req, res) {
+router.get('/register', requireAuth, requireAdmin, function(req, res) {
   res.render('register', { title: 'Crear usuario', error: null });
 });
 
-router.post('/register', function(req, res) {
+router.post('/register', requireAuth, requireAdmin, function(req, res) {
   var email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   var password = typeof req.body.password === 'string' ? req.body.password : '';
   var passwordConfirmation = typeof req.body.password_confirmation === 'string'
     ? req.body.password_confirmation
     : '';
+
+  var role = req.body.role === 'admin' ? 'admin' : 'user';
 
   if (!email || !password || !passwordConfirmation) {
     return registerError(req, res, 'Correo y contraseñas son obligatorios');
@@ -37,7 +41,7 @@ router.post('/register', function(req, res) {
   var passwordHash = bcrypt.hashSync(password, 12);
   db.run(
     'INSERT INTO auth_users (email, password_hash, role) VALUES (?, ?, ?)',
-    [email, passwordHash, 'user'],
+    [email, passwordHash, role],
     function(error) {
       if (error) {
         if (error.code === 'SQLITE_CONSTRAINT') {
@@ -50,7 +54,7 @@ router.post('/register', function(req, res) {
       if (req.is('json')) {
         return res.status(201).json({ message: 'Usuario creado correctamente', id: this.lastID });
       }
-      res.redirect('/auth/login');
+      res.redirect('/');
     }
   );
 });

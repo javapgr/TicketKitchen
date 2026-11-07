@@ -20,6 +20,10 @@ html
           |  |
           a(href='/restaurant/tickets') Tickets
           |  |
+          if user.role === 'admin'
+            a(href='/auth/register') Crear usuario
+            |  |
+          | #{user.email} (#{user.role})
           form(action='/auth/logout' method='post')
             button(type='submit') Cerrar sesión
     hr

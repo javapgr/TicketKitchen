@@ -18,6 +18,12 @@ block content
       br
       input(type='password' name='password_confirmation' id='password_confirmation' minlength='8' required)
     p
-      button(type='submit') Registrarme
+      label(for='role') Rol
+      br
+      select(name='role' id='role')
+        option(value='user') Usuario (solo tickets)
+        option(value='admin') Administrador
+    p
+      button(type='submit') Crear usuario
   p
-    a(href='/auth/login') Ya tengo una cuenta
+    a(href='/') Volver al inicio

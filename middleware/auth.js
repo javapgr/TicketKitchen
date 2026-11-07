@@ -2,7 +2,7 @@ var jwt = require('jsonwebtoken');
 
 var jwtSecret = require('../config/auth').jwtSecret;
 
-module.exports = function requireAuth(req, res, next) {
+function requireAuth(req, res, next) {
   var token = req.cookies && req.cookies.auth_token;
   if (!token) {
     return redirectOrReject(req, res);
@@ -16,7 +16,19 @@ module.exports = function requireAuth(req, res, next) {
     res.clearCookie('auth_token');
     redirectOrReject(req, res);
   }
-};
+}
+
+function forbidden(req, res) {
+  if (req.path.indexOf('/api/') !== -1 || req.is('json')) {
+    return res.status(403).json({ error: 'No tienes permiso para esta acción' });
+  }
+  res.status(403).send('No tienes permiso para esta acción');
+}
+
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') return forbidden(req, res);
+  next();
+}
 
 function redirectOrReject(req, res) {
   if (req.path.indexOf('/api/') === 0 || req.is('json')) {
@@ -24,3 +36,7 @@ function redirectOrReject(req, res) {
   }
   res.redirect('/auth/login');
 }
+
+module.exports = requireAuth;
+module.exports.requireAdmin = requireAdmin;
+module.exports.forbidden = forbidden;
