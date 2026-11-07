@@ -1,0 +1,62 @@
+extends layout
+
+block content
+  p
+    a(href='/restaurant/tickets') Volver a tickets
+  h2= title
+
+  ul
+    li Mesa: #{ticket.numero_mesa}
+    li Estado: #{ticket.estado}
+    li Fecha: #{ticket.fecha_hora}
+    li Cliente: #{ticket.cliente || 'Sin asignar'}
+    li Mozo: #{ticket.mozo || 'Sin asignar'}
+    li Cocinero: #{ticket.cocinero || 'Sin asignar'}
+  p
+    a(href='/restaurant/tickets/edit/' + ticket.id) Editar datos del ticket
+
+  if error
+    p= error
+
+  h3 Agregar producto
+  if productos.length
+    form(action='/restaurant/tickets/' + ticket.id + '/items' method='post')
+      p
+        label(for='producto_id') Producto
+        br
+        select(name='producto_id' id='producto_id' required)
+          each producto in productos
+            option(value=producto.id) #{producto.nombre} - $#{producto.precio.toFixed(2)}
+      p
+        label(for='cantidad') Cantidad
+        br
+        input(type='number' name='cantidad' id='cantidad' min='1' value='1' required)
+      p
+        button(type='submit') Agregar
+  else
+    p No hay productos disponibles.
+
+  h3 Productos del ticket
+  if items.length
+    table(border='1' cellpadding='4')
+      thead
+        tr
+          th Producto
+          th Cantidad
+          th Precio unitario
+          th Subtotal
+          th Acciones
+      tbody
+        each item in items
+          tr
+            td= item.producto
+            td= item.cantidad
+            td $#{item.precio_unitario.toFixed(2)}
+            td $#{(item.cantidad * item.precio_unitario).toFixed(2)}
+            td
+              form(action='/restaurant/tickets/' + ticket.id + '/items/' + item.id + '/delete' method='post')
+                button(type='submit') Quitar
+  else
+    p Este ticket aún no tiene productos.
+
+  h3 Total: $#{ticket.total.toFixed(2)}

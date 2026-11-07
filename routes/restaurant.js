@@ -54,7 +54,8 @@ var entities = {
   tickets: {
     title: 'Tickets',
     table: 'tickets',
-    fields: ['numero_mesa', 'estado', 'total', 'fecha_hora', 'cliente_id', 'mozo_id', 'cocinero_id'],
+    fields: ['numero_mesa', 'estado', 'cliente_id', 'mozo_id', 'cocinero_id'],
+    listFields: ['numero_mesa', 'estado', 'total', 'fecha_hora', 'cliente_id', 'mozo_id', 'cocinero_id'],
     selects: { estado: selectOptions.estadosTicket },
     createDefaults: { estado: 'pendiente' }
   }
@@ -109,7 +110,7 @@ function renderEntity(req, res, entityName, entity, editRow) {
           res.render('entity', {
             title: entity.title,
             entityName: entityName,
-            fields: entity.fields,
+            fields: entity.listFields || entity.fields,
             formFields: formFields(entity, editRow),
             selects: entity.selects || {},
             rows: rows,
@@ -123,6 +124,98 @@ function renderEntity(req, res, entityName, entity, editRow) {
     });
   });
 }
+
+// ---- Ítems de ticket ----
+function recalcTotal(ticketId, callback) {
+  db.run(
+    'UPDATE tickets SET total = COALESCE((SELECT SUM(cantidad * precio_unitario) FROM ticket_items WHERE ticket_id = ?), 0) WHERE id = ?',
+    [ticketId, ticketId],
+    callback
+  );
+}
+
+function addItem(ticketId, productoId, cantidad, callback) {
+  cantidad = Number(cantidad);
+  if (!Number.isInteger(cantidad) || cantidad < 1) {
+    return callback({ status: 400, message: 'La cantidad debe ser un entero mayor a 0' });
+  }
+  db.get('SELECT id FROM tickets WHERE id = ?', [ticketId], function(ticketError, ticket) {
+    if (ticketError) return callback({ status: 400, message: ticketError.message });
+    if (!ticket) return callback({ status: 404, message: 'Ticket no encontrado' });
+    db.get('SELECT id, precio, disponible FROM productos WHERE id = ?', [productoId], function(prodError, producto) {
+      if (prodError) return callback({ status: 400, message: prodError.message });
+      if (!producto) return callback({ status: 404, message: 'Producto no encontrado' });
+      if (producto.disponible !== 1) return callback({ status: 400, message: 'Producto no disponible' });
+      db.run(
+        'INSERT INTO ticket_items (ticket_id, producto_id, cantidad, precio_unitario) VALUES (?, ?, ?, ?)',
+        [ticketId, producto.id, cantidad, producto.precio],
+        function(error) {
+          if (error) return callback({ status: 400, message: error.message });
+          var itemId = this.lastID;
+          recalcTotal(ticketId, function(totalError) {
+            if (totalError) return callback({ status: 400, message: totalError.message });
+            callback(null, itemId);
+          });
+        }
+      );
+    });
+  });
+}
+
+function removeItem(ticketId, itemId, callback) {
+  db.run('DELETE FROM ticket_items WHERE id = ? AND ticket_id = ?', [itemId, ticketId], function(error) {
+    if (error) return callback({ status: 400, message: error.message });
+    if (this.changes === 0) return callback({ status: 404, message: 'Ítem no encontrado' });
+    recalcTotal(ticketId, function(totalError) {
+      if (totalError) return callback({ status: 400, message: totalError.message });
+      callback(null);
+    });
+  });
+}
+
+router.get('/tickets/:id', function(req, res) {
+  db.get(
+    'SELECT t.*, c.nombre AS cliente, m.nombre AS mozo, k.nombre AS cocinero FROM tickets t ' +
+    'LEFT JOIN clientes c ON c.id = t.cliente_id LEFT JOIN mozos m ON m.id = t.mozo_id ' +
+    'LEFT JOIN cocineros k ON k.id = t.cocinero_id WHERE t.id = ?',
+    [req.params.id],
+    function(error, ticket) {
+      if (error) return sendError(res, error);
+      if (!ticket) return res.status(404).send('Ticket no encontrado');
+      db.all(
+        'SELECT i.*, p.nombre AS producto FROM ticket_items i JOIN productos p ON p.id = i.producto_id WHERE i.ticket_id = ? ORDER BY i.id',
+        [ticket.id],
+        function(itemsError, items) {
+          if (itemsError) return sendError(res, itemsError);
+          db.all('SELECT id, nombre, precio FROM productos WHERE disponible = 1 ORDER BY nombre', function(prodError, productos) {
+            if (prodError) return sendError(res, prodError);
+            res.render('ticket', {
+              title: 'Ticket #' + ticket.id,
+              ticket: ticket,
+              items: items,
+              productos: productos,
+              error: req.query.error || null
+            });
+          });
+        }
+      );
+    }
+  );
+});
+
+router.post('/tickets/:id/items', function(req, res) {
+  addItem(req.params.id, req.body.producto_id, req.body.cantidad, function(error) {
+    if (error) return res.redirect('/restaurant/tickets/' + req.params.id + '?error=' + encodeURIComponent(error.message));
+    res.redirect('/restaurant/tickets/' + req.params.id);
+  });
+});
+
+router.post('/tickets/:id/items/:itemId/delete', function(req, res) {
+  removeItem(req.params.id, req.params.itemId, function(error) {
+    if (error) return res.redirect('/restaurant/tickets/' + req.params.id + '?error=' + encodeURIComponent(error.message));
+    res.redirect('/restaurant/tickets/' + req.params.id);
+  });
+});
 
 // Vista HTML: /restaurant/clientes, /restaurant/mozos, etc.
 router.get('/:entity', function(req, res, next) {

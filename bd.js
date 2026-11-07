@@ -86,6 +86,18 @@ db.serialize(function() {
       FOREIGN KEY (cocinero_id) REFERENCES cocineros(id)
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS ticket_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL,
+      producto_id INTEGER NOT NULL,
+      cantidad INTEGER NOT NULL CHECK (cantidad > 0),
+      precio_unitario REAL NOT NULL CHECK (precio_unitario >= 0),
+      FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+      FOREIGN KEY (producto_id) REFERENCES productos(id)
+    )
+  `);
 });
 
 module.exports = db;

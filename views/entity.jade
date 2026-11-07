@@ -46,7 +46,7 @@ block content
           th ID
           each field in fields
             th= field.replace(/_/g, ' ')
-          if canWrite || canDelete
+          if canWrite || canDelete || entityName === 'tickets'
             th Acciones
       tbody
         each row in rows
@@ -62,8 +62,11 @@ block content
                       | #{option.nombre}
                 else
                   | #{row[field]}
-            if canWrite || canDelete
+            if canWrite || canDelete || entityName === 'tickets'
               td
+                if entityName === 'tickets'
+                  a(href='/restaurant/tickets/' + row.id) Detalle
+                  |  |
                 if canWrite
                   a(href='/restaurant/' + entityName + '/edit/' + row.id) Editar
                 if canWrite && canDelete
