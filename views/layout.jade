@@ -8,17 +8,21 @@ html
     header
       h1 Sistema de restaurante
       nav
-        a(href='/') Inicio
-        |  |
-        a(href='/restaurant/clientes') Clientes
-        |  |
-        a(href='/restaurant/mozos') Mozos
-        |  |
-        a(href='/restaurant/cocineros') Cocineros
-        |  |
-        a(href='/restaurant/productos') Productos
-        |  |
-        a(href='/restaurant/tickets') Tickets
+        if user
+          a(href='/') Inicio
+          |  |
+          a(href='/restaurant/clientes') Clientes
+          |  |
+          a(href='/restaurant/mozos') Mozos
+          |  |
+          a(href='/restaurant/cocineros') Cocineros
+          |  |
+          a(href='/restaurant/productos') Productos
+          |  |
+          a(href='/restaurant/tickets') Tickets
+          |  |
+          form.inline-form(action='/auth/logout' method='post')
+            button(type='submit') Cerrar sesión
     hr
     main
       block content

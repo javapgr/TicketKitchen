@@ -1,0 +1,23 @@
+extends layout
+
+block content
+  h2 Crear usuario
+  if error
+    p.error= error
+  form(action='/auth/register' method='post')
+    p
+      label(for='email') Correo
+      br
+      input(type='email' name='email' id='email' required autofocus)
+    p
+      label(for='password') Contraseña
+      br
+      input(type='password' name='password' id='password' minlength='8' required)
+    p
+      label(for='password_confirmation') Confirmar contraseña
+      br
+      input(type='password' name='password_confirmation' id='password_confirmation' minlength='8' required)
+    p
+      button(type='submit') Registrarme
+  p
+    a(href='/auth/login') Ya tengo una cuenta

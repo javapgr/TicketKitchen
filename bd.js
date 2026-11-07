@@ -10,12 +10,26 @@ db.serialize(function() {
   db.run('PRAGMA foreign_keys = ON');
 
   db.run(`
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE IF NOT EXISTS auth_users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL DEFAULT ''
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'admin',
+      failed_attempts INTEGER NOT NULL DEFAULT 0,
+      locked_until INTEGER
     )
   `);
+
+  db.run('ALTER TABLE auth_users ADD COLUMN failed_attempts INTEGER NOT NULL DEFAULT 0', function(error) {
+    if (error && !error.message.includes('duplicate column name')) {
+      console.error('Error al actualizar auth_users:', error.message);
+    }
+  });
+  db.run('ALTER TABLE auth_users ADD COLUMN locked_until INTEGER', function(error) {
+    if (error && !error.message.includes('duplicate column name')) {
+      console.error('Error al actualizar auth_users:', error.message);
+    }
+  });
 
   db.run(`
     CREATE TABLE IF NOT EXISTS clientes (

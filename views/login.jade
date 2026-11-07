@@ -1,0 +1,20 @@
+extends layout
+
+block content
+  h2 Iniciar sesión
+  if error
+    p.error= error
+  form(action='/auth/login' method='post')
+    p
+      label(for='email') Correo
+      br
+      input(type='email' name='email' id='email' required autofocus)
+    p
+      label(for='password') Contraseña
+      br
+      input(type='password' name='password' id='password' required)
+    p
+      button(type='submit') Entrar
+  p
+    | ¿No tienes cuenta? 
+    a(href='/auth/register') Crear usuario
