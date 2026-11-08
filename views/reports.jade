@@ -1,0 +1,82 @@
+extends layout
+
+block content
+  h2 Reportes
+
+  form(action='/restaurant/reportes' method='get')
+    p
+      label(for='desde') Desde
+      br
+      input(type='date' name='desde' id='desde' value=filters.desde)
+    p
+      label(for='hasta') Hasta
+      br
+      input(type='date' name='hasta' id='hasta' value=filters.hasta)
+    p
+      label(for='estado') Estado
+      br
+      select(name='estado' id='estado')
+        option(value='' selected=!filters.estado) Todos
+        each option in statusOptions
+          option(value=option.value selected=filters.estado === option.value)= option.label
+    p
+      button(type='submit') Filtrar
+      |  
+      a(href='/restaurant/reportes') Limpiar
+
+  h3 Resumen
+  ul
+    li Tickets: #{summary.tickets}
+    li Ventas: $#{Number(summary.ventas).toFixed(2)}
+    li Ticket promedio: $#{Number(summary.promedio).toFixed(2)}
+
+  h3 Tickets por estado
+  if byStatus.length
+    table(border='1' cellpadding='4')
+      thead
+        tr
+          th Estado
+          th Tickets
+          th Ventas
+      tbody
+        each row in byStatus
+          tr
+            td= row.estado
+            td= row.tickets
+            td $#{Number(row.ventas).toFixed(2)}
+  else
+    p No hay tickets para los filtros seleccionados.
+
+  h3 Productos más vendidos
+  if topProducts.length
+    table(border='1' cellpadding='4')
+      thead
+        tr
+          th Producto
+          th Unidades
+          th Ventas
+      tbody
+        each row in topProducts
+          tr
+            td= row.nombre
+            td= row.cantidad
+            td $#{Number(row.ventas).toFixed(2)}
+  else
+    p No hay productos vendidos para los filtros seleccionados.
+
+  h3 Ventas por día
+  if byDay.length
+    table(border='1' cellpadding='4')
+      thead
+        tr
+          th Fecha
+          th Tickets
+          th Ventas
+      tbody
+        each row in byDay
+          tr
+            td= row.fecha
+            td= row.tickets
+            td $#{Number(row.ventas).toFixed(2)}
+  else
+    p No hay ventas para los filtros seleccionados.

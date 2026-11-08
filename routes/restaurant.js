@@ -141,6 +141,79 @@ function queryRows(entity, callback) {
   db.all('SELECT * FROM ' + entity.table + ' ORDER BY id DESC', callback);
 }
 
+function reportFilters(req) {
+  var filters = [];
+  var params = [];
+  var from = typeof req.query.desde === 'string' ? req.query.desde : '';
+  var to = typeof req.query.hasta === 'string' ? req.query.hasta : '';
+  var status = typeof req.query.estado === 'string' ? req.query.estado : '';
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(from)) {
+    filters.push('date(t.fecha_hora) >= date(?)');
+    params.push(from);
+  } else {
+    from = '';
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    filters.push('date(t.fecha_hora) <= date(?)');
+    params.push(to);
+  } else {
+    to = '';
+  }
+  if (selectOptions.estadosTicket.some(function(option) { return option.value === status; })) {
+    filters.push('t.estado = ?');
+    params.push(status);
+  } else {
+    status = '';
+  }
+
+  return {
+    where: filters.length ? ' WHERE ' + filters.join(' AND ') : '',
+    params: params,
+    desde: from,
+    hasta: to,
+    estado: status
+  };
+}
+
+function renderReports(req, res) {
+  var filters = reportFilters(req);
+  var summarySql = 'SELECT COUNT(*) AS tickets, COALESCE(SUM(t.total), 0) AS ventas, ' +
+    'COALESCE(AVG(t.total), 0) AS promedio FROM tickets t' + filters.where;
+  var statusSql = 'SELECT t.estado, COUNT(*) AS tickets, COALESCE(SUM(t.total), 0) AS ventas ' +
+    'FROM tickets t' + filters.where + ' GROUP BY t.estado ORDER BY tickets DESC';
+  var productsSql = 'SELECT p.nombre, SUM(i.cantidad) AS cantidad, ' +
+    'COALESCE(SUM(i.cantidad * i.precio_unitario), 0) AS ventas ' +
+    'FROM ticket_items i JOIN tickets t ON t.id = i.ticket_id ' +
+    'JOIN productos p ON p.id = i.producto_id' + filters.where +
+    ' GROUP BY p.id, p.nombre ORDER BY cantidad DESC, ventas DESC LIMIT 10';
+  var dailySql = 'SELECT date(t.fecha_hora) AS fecha, COUNT(*) AS tickets, ' +
+    'COALESCE(SUM(t.total), 0) AS ventas FROM tickets t' + filters.where +
+    ' GROUP BY date(t.fecha_hora) ORDER BY fecha DESC LIMIT 14';
+
+  db.get(summarySql, filters.params, function(summaryError, summary) {
+    if (summaryError) return respondError(req, res, friendlyDbError(summaryError));
+    db.all(statusSql, filters.params, function(statusError, byStatus) {
+      if (statusError) return respondError(req, res, friendlyDbError(statusError));
+      db.all(productsSql, filters.params, function(productsError, topProducts) {
+        if (productsError) return respondError(req, res, friendlyDbError(productsError));
+        db.all(dailySql, filters.params, function(dailyError, byDay) {
+          if (dailyError) return respondError(req, res, friendlyDbError(dailyError));
+          res.render('reports', {
+            title: 'Reportes',
+            summary: summary,
+            byStatus: byStatus,
+            topProducts: topProducts,
+            byDay: byDay,
+            filters: filters,
+            statusOptions: selectOptions.estadosTicket
+          });
+        });
+      });
+    });
+  });
+}
+
 // ---- Operaciones compartidas (HTML y API) ----
 function createRecord(entity, body, callback) {
   var data = Object.assign({}, body, entity.createDefaults || {});
@@ -295,6 +368,10 @@ function renderEntity(req, res, entityName, entity, editRow) {
 }
 
 // ---- Rutas HTML ----
+router.get('/reportes', function(req, res) {
+  renderReports(req, res);
+});
+
 router.get('/tickets/:id', function(req, res) {
   db.get(
     'SELECT t.*, c.nombre AS cliente, m.nombre AS mozo, k.nombre AS cocinero FROM tickets t ' +
